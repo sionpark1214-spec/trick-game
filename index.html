@@ -96,11 +96,30 @@
     font-size: 13px;
     opacity: 0.7;
     line-height: 1.5;
+    margin-bottom: 28px;
+  }
+  .orient-warn .anyway-btn {
+    background: transparent;
+    border: 1.5px solid var(--fg);
+    color: var(--fg);
+    padding: 10px 22px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .orient-warn .anyway-btn:active { transform: scale(0.96); background: var(--fg); color: #ffffff; }
+  .orient-warn .lock-hint {
+    margin-top: 18px;
+    font-size: 11px;
+    opacity: 0.5;
+    max-width: 260px;
+    line-height: 1.5;
   }
   /* Portrait detection is done in JS by comparing innerWidth vs innerHeight,
      because some mobile browsers misreport CSS orientation after rotation. */
-  body.is-portrait .orient-warn { display: flex; }
-  body.is-portrait #app { display: none; }
+  body.is-portrait:not(.force-play) .orient-warn { display: flex; }
+  body.is-portrait:not(.force-play) #app { display: none; }
 
   /* HUD */
   .hud {
@@ -414,7 +433,9 @@
 <div class="orient-warn" aria-hidden="true">
   <div class="phone"></div>
   <div class="msg">가로로 돌려줘</div>
-  <div class="sub">이 게임은 가로 모드 전용이야</div>
+  <div class="sub">이 게임은 가로 모드에서 잘 보여</div>
+  <button class="anyway-btn" id="forcePlayBtn">그래도 시작하기</button>
+  <div class="lock-hint">폰을 돌렸는데도 안 바뀌면 회전 잠금이 켜져 있을 수 있어 (제어센터 → 자물쇠+화살표 아이콘)</div>
 </div>
 
 <div id="app">
@@ -755,9 +776,14 @@
   checkOrientation();
   window.addEventListener("resize", checkOrientation);
   window.addEventListener("orientationchange", () => {
-    // give the browser a beat to settle viewport dimensions
     setTimeout(checkOrientation, 100);
     setTimeout(checkOrientation, 400);
+  });
+
+  // Allow bypassing the portrait blocker (rotation lock workaround).
+  const forceBtn = document.getElementById("forcePlayBtn");
+  if (forceBtn) forceBtn.addEventListener("click", () => {
+    document.body.classList.add("force-play");
   });
 })();
 </script>
