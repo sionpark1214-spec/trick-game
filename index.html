@@ -696,8 +696,41 @@
     loadLevel(0);
   });
 
-  $("btnLeft").addEventListener("click", () => nudgeEgg(-10));
-  $("btnRight").addEventListener("click", () => nudgeEgg(10));
+  // Hold-to-move: while a direction button is pressed, move the egg 1% per frame.
+  let holdDir = 0;
+  let holdRAF = 0;
+  let prevTransition = "";
+  const tick = () => {
+    if (!holdDir) return;
+    nudgeEgg(holdDir);
+    holdRAF = requestAnimationFrame(tick);
+  };
+  const startHold = (dir) => {
+    if (holdDir === dir) return;
+    holdDir = dir;
+    prevTransition = egg.style.transition;
+    egg.style.transition = "none";
+    cancelAnimationFrame(holdRAF);
+    tick();
+  };
+  const stopHold = () => {
+    if (!holdDir) return;
+    holdDir = 0;
+    cancelAnimationFrame(holdRAF);
+    holdRAF = 0;
+    egg.style.transition = prevTransition;
+  };
+  const bindHold = (btn, dir) => {
+    const down = (e) => { e.preventDefault(); startHold(dir); };
+    btn.addEventListener("pointerdown", down);
+  };
+  bindHold($("btnLeft"), -1);
+  bindHold($("btnRight"), 1);
+  // Release globally so the egg always stops when the finger lifts,
+  // even if it slid off the button or out of the window.
+  window.addEventListener("pointerup", stopHold);
+  window.addEventListener("pointercancel", stopHold);
+  window.addEventListener("blur", stopHold);
 
   $("hintBtn").addEventListener("click", () => {
     const lv = LEVELS[currentLevel];
