@@ -3,54 +3,623 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#0f1020" />
-<title>속임수 게임</title>
+<meta name="theme-color" content="#1a1530" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>미스터 에그 - 속임수 게임</title>
 <style>
   :root {
-    --bg: #0f1020;
-    --fg: #f5f6ff;
-    --accent: #ff5a8a;
+    --bg-1: #1a1530;
+    --bg-2: #2b1f4a;
+    --floor: #3a2956;
+    --wall: #4a3370;
+    --fg: #f5f0ff;
+    --accent: #ffd34d;
+    --accent2: #ff6b9d;
+    --door: #6b3f1d;
+    --door-frame: #8a5530;
+    --shadow: rgba(0, 0, 0, 0.35);
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
   html, body {
     margin: 0;
     padding: 0;
+    width: 100%;
     height: 100%;
-    background: var(--bg);
+    background: var(--bg-1);
     color: var(--fg);
-    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
-      "Pretendard", "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
     overflow: hidden;
     overscroll-behavior: none;
+    touch-action: none;
   }
-  body {
+  #app {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* HUD */
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    font-size: 14px;
+    z-index: 10;
+  }
+  .hud .level {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+    font-weight: 600;
+  }
+  .hud .hint-btn {
+    background: var(--accent);
+    color: #1a1530;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .hud .hint-btn:active { transform: scale(0.95); }
+
+  /* Stage */
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 100%);
+  }
+  .room {
+    position: absolute;
+    inset: 0;
+  }
+  .floor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 22%;
+    background: linear-gradient(180deg, var(--floor) 0%, #2a1a3e 100%);
+    border-top: 2px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Egg character */
+  .egg {
+    position: absolute;
+    width: 64px;
+    height: 80px;
+    bottom: calc(22% - 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), bottom 0.4s ease-out, opacity 0.3s;
+    pointer-events: none;
+  }
+  .egg .body {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 30%, #fffbe6 0%, #fff0c2 60%, #f5d97a 100%);
+    border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+    box-shadow: inset -6px -8px 18px rgba(180, 130, 0, 0.25), 0 6px 14px var(--shadow);
+  }
+  .egg .face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-top: 12px;
+  }
+  .egg .eyes {
+    display: flex;
+    gap: 10px;
+  }
+  .egg .eye {
+    width: 7px;
+    height: 9px;
+    background: #2a1a3e;
+    border-radius: 50%;
+    animation: blink 4s infinite;
+  }
+  .egg .mouth {
+    margin-top: 6px;
+    width: 12px;
+    height: 6px;
+    border: 2px solid #2a1a3e;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+  }
+  @keyframes blink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    94%, 98% { transform: scaleY(0.1); }
+  }
+  .egg.celebrate {
+    animation: hop 0.5s ease-in-out 2;
+  }
+  @keyframes hop {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-30px); }
+  }
+
+  /* Door */
+  .door {
+    position: absolute;
+    width: 88px;
+    height: 140px;
+    background: linear-gradient(180deg, var(--door) 0%, #4a2810 100%);
+    border: 4px solid var(--door-frame);
+    border-radius: 44px 44px 6px 6px;
+    box-shadow: 0 6px 16px var(--shadow), inset 0 0 20px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.4s;
+  }
+  .door:active { transform: scale(0.97); }
+  .door::after {
+    content: "";
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    right: 12px;
+    top: 50%;
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .door.locked::before {
+    content: "";
+    position: absolute;
+    width: 32px;
+    height: 28px;
+    background: #d9d2c4;
+    border-radius: 6px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 6px var(--shadow);
+  }
+  .door.locked::after {
+    content: "🔒";
+    position: absolute;
+    font-size: 20px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: none;
+    box-shadow: none;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    right: auto;
+  }
+  .door.flash {
+    box-shadow: 0 0 0 4px var(--accent), 0 0 32px var(--accent), inset 0 0 20px rgba(0, 0, 0, 0.3);
+  }
+  .door.open {
+    background: #0a0512;
+    border-color: var(--door-frame);
+  }
+
+  /* Key */
+  .key {
+    position: absolute;
+    width: 48px;
+    height: 24px;
+    cursor: grab;
+    z-index: 6;
+    touch-action: none;
+    transition: filter 0.2s;
+  }
+  .key.dragging { cursor: grabbing; filter: drop-shadow(0 8px 12px rgba(255, 211, 77, 0.5)); }
+  .key svg { width: 100%; height: 100%; display: block; }
+
+  /* Speech */
+  .speech {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(22% + 90px);
+    background: rgba(255, 255, 255, 0.95);
+    color: #1a1530;
+    padding: 8px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 500;
+    max-width: 70%;
+    text-align: center;
+    box-shadow: 0 4px 12px var(--shadow);
+    z-index: 7;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .speech::after {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 12px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.95);
+  }
+  .speech.show { opacity: 1; }
+
+  /* Title screen */
+  .title-screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 100%);
+    z-index: 20;
+    transition: opacity 0.5s;
+  }
+  .title-screen.hide { opacity: 0; pointer-events: none; }
+  .title-screen .logo {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+  }
+  .title-screen .sub {
+    font-size: 14px;
+    opacity: 0.7;
+    margin-bottom: 40px;
+  }
+  .title-screen .start-btn {
+    background: var(--accent);
+    color: #1a1530;
+    border: none;
+    padding: 14px 36px;
+    border-radius: 999px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(255, 211, 77, 0.4);
+  }
+  .title-screen .start-btn:active { transform: scale(0.97); }
+  .title-screen .egg-preview {
+    width: 80px;
+    height: 100px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .title-screen .egg-preview .body {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 30%, #fffbe6 0%, #fff0c2 60%, #f5d97a 100%);
+    border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+    box-shadow: inset -6px -8px 18px rgba(180, 130, 0, 0.25), 0 6px 14px var(--shadow);
+    animation: bob 2s ease-in-out infinite;
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Level transition */
+  .transition {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-1);
+    z-index: 30;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right)
-             env(safe-area-inset-bottom) env(safe-area-inset-left);
-    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
   }
-  main { padding: 24px; max-width: 480px; }
-  h1 { font-size: 28px; margin: 0 0 12px; letter-spacing: -0.02em; }
-  p { opacity: 0.8; line-height: 1.6; margin: 8px 0; }
-  .badge {
-    display: inline-block;
-    margin-top: 16px;
-    padding: 8px 14px;
-    border: 1px solid var(--accent);
-    border-radius: 999px;
+  .transition.show { opacity: 1; pointer-events: all; }
+  .transition .text {
+    font-size: 22px;
+    font-weight: 700;
     color: var(--accent);
-    font-size: 13px;
   }
 </style>
 </head>
 <body>
-  <main>
-    <h1>속임수 게임</h1>
-    <p>모바일 웹게임 준비 중이야.</p>
-    <p>여기는 GitHub Pages로 배포된 placeholder.</p>
-    <span class="badge">coming soon</span>
-  </main>
+<div id="app">
+  <div class="hud" hidden>
+    <div class="level" id="levelLabel">LEVEL 1</div>
+    <button class="hint-btn" id="hintBtn">힌트</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <!-- Title -->
+    <div class="title-screen" id="titleScreen">
+      <div class="egg-preview"><div class="body"></div></div>
+      <div class="logo">미스터 에그</div>
+      <div class="sub">속임수에 당하지 말 것</div>
+      <button class="start-btn" id="startBtn">시작</button>
+    </div>
+
+    <!-- Level transition overlay -->
+    <div class="transition" id="transition">
+      <div class="text" id="transitionText">LEVEL 1</div>
+    </div>
+
+    <!-- Room (level content rendered here) -->
+    <div class="room" id="room" hidden>
+      <div class="floor"></div>
+      <div class="egg" id="egg">
+        <div class="body"></div>
+        <div class="face">
+          <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+          <div class="mouth"></div>
+        </div>
+      </div>
+      <div class="speech" id="speech"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ===== Engine =====
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage");
+  const room = $("room");
+  const egg = $("egg");
+  const speech = $("speech");
+  const hud = document.querySelector(".hud");
+  const levelLabel = $("levelLabel");
+  const transition = $("transition");
+  const transitionText = $("transitionText");
+
+  let currentLevel = 0;
+  let levelEls = []; // dynamic elements added by current level
+  let cleanupFns = [];
+
+  const say = (text, ms = 1800) => {
+    speech.textContent = text;
+    speech.classList.add("show");
+    clearTimeout(say._t);
+    if (ms) say._t = setTimeout(() => speech.classList.remove("show"), ms);
+  };
+
+  const addEl = (html) => {
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html.trim();
+    const el = tpl.content.firstChild;
+    room.appendChild(el);
+    levelEls.push(el);
+    return el;
+  };
+
+  const onCleanup = (fn) => cleanupFns.push(fn);
+
+  const clearLevel = () => {
+    levelEls.forEach((el) => el.remove());
+    levelEls = [];
+    cleanupFns.forEach((fn) => fn());
+    cleanupFns = [];
+    speech.classList.remove("show");
+  };
+
+  const moveEggTo = (xPercent) => {
+    egg.style.left = xPercent + "%";
+  };
+
+  const celebrate = () => {
+    egg.classList.add("celebrate");
+    setTimeout(() => egg.classList.remove("celebrate"), 1000);
+  };
+
+  const nextLevel = () => {
+    currentLevel++;
+    if (currentLevel >= LEVELS.length) {
+      showEnding();
+      return;
+    }
+    showTransition("LEVEL " + (currentLevel + 1), () => loadLevel(currentLevel));
+  };
+
+  const showTransition = (text, after) => {
+    transitionText.textContent = text;
+    transition.classList.add("show");
+    setTimeout(() => {
+      clearLevel();
+      after && after();
+      setTimeout(() => transition.classList.remove("show"), 400);
+    }, 600);
+  };
+
+  const showEnding = () => {
+    transitionText.textContent = "🎉 클리어!";
+    transition.classList.add("show");
+    clearLevel();
+  };
+
+  const loadLevel = (idx) => {
+    levelLabel.textContent = "LEVEL " + (idx + 1);
+    moveEggTo(50);
+    LEVELS[idx].init();
+  };
+
+  // ===== Level 1: 숨은 열쇠를 드래그해서 자물쇠에 =====
+  const level1 = {
+    init() {
+      const door = addEl('<div class="door locked" style="left:50%;transform:translateX(-50%);bottom:calc(22% + 10px);position:absolute;"></div>');
+      // Hide a key in a "dark" corner — semi-transparent until tap area is explored.
+      const key = addEl(`
+        <div class="key" style="right:18px;top:20%;transform:rotate(20deg);">
+          <svg viewBox="0 0 48 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="12" r="8" fill="#ffd34d" stroke="#a87a00" stroke-width="2"/>
+            <circle cx="10" cy="12" r="3" fill="#1a1530"/>
+            <rect x="16" y="9" width="28" height="6" rx="2" fill="#ffd34d" stroke="#a87a00" stroke-width="2"/>
+            <rect x="36" y="9" width="3" height="10" fill="#a87a00"/>
+            <rect x="42" y="9" width="3" height="8" fill="#a87a00"/>
+          </svg>
+        </div>
+      `);
+      setTimeout(() => say("열쇠가 어디 있을까?"), 400);
+
+      // Drag the key onto the door
+      let dragging = false;
+      let offsetX = 0, offsetY = 0;
+      const onDown = (e) => {
+        e.preventDefault();
+        const t = e.touches ? e.touches[0] : e;
+        const r = key.getBoundingClientRect();
+        offsetX = t.clientX - r.left;
+        offsetY = t.clientY - r.top;
+        dragging = true;
+        key.classList.add("dragging");
+        key.style.transition = "none";
+      };
+      const onMove = (e) => {
+        if (!dragging) return;
+        e.preventDefault();
+        const t = e.touches ? e.touches[0] : e;
+        const stageRect = stage.getBoundingClientRect();
+        const x = t.clientX - stageRect.left - offsetX;
+        const y = t.clientY - stageRect.top - offsetY;
+        key.style.left = x + "px";
+        key.style.top = y + "px";
+        key.style.right = "auto";
+        key.style.transform = "rotate(0deg)";
+      };
+      const onUp = () => {
+        if (!dragging) return;
+        dragging = false;
+        key.classList.remove("dragging");
+        // hit test against door
+        const k = key.getBoundingClientRect();
+        const d = door.getBoundingClientRect();
+        const overlap = !(k.right < d.left || k.left > d.right || k.bottom < d.top || k.top > d.bottom);
+        if (overlap) {
+          unlock();
+        } else {
+          say("문에 갖다 대 봐!");
+        }
+      };
+      const unlock = () => {
+        door.classList.remove("locked");
+        door.classList.add("open", "flash");
+        key.style.transition = "opacity 0.3s";
+        key.style.opacity = "0";
+        say("문이 열렸어!", 1200);
+        setTimeout(() => {
+          // walk egg to door then advance
+          const doorRect = door.getBoundingClientRect();
+          const stageRect = stage.getBoundingClientRect();
+          const xPercent = ((doorRect.left + doorRect.width / 2 - stageRect.left) / stageRect.width) * 100;
+          moveEggTo(xPercent);
+          setTimeout(() => {
+            egg.style.opacity = "0";
+            setTimeout(() => {
+              egg.style.opacity = "1";
+              nextLevel();
+            }, 400);
+          }, 500);
+        }, 1200);
+      };
+
+      key.addEventListener("touchstart", onDown, { passive: false });
+      key.addEventListener("mousedown", onDown);
+      window.addEventListener("touchmove", onMove, { passive: false });
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("touchend", onUp);
+      window.addEventListener("mouseup", onUp);
+      onCleanup(() => {
+        key.removeEventListener("touchstart", onDown);
+        key.removeEventListener("mousedown", onDown);
+        window.removeEventListener("touchmove", onMove);
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("touchend", onUp);
+        window.removeEventListener("mouseup", onUp);
+      });
+    },
+    hint: "노란 열쇠를 손가락으로 끌어다 문 위에 놓아봐.",
+  };
+
+  // ===== Level 2: 깜빡인 진짜 문 기억 =====
+  const level2 = {
+    init() {
+      const N = 4;
+      const positions = [18, 38, 58, 78];
+      const doors = positions.map((p) =>
+        addEl(`<div class="door" style="left:${p}%;bottom:calc(22% + 10px);position:absolute;"></div>`)
+      );
+      const winnerIdx = Math.floor(Math.random() * N);
+      say("어느 문이 진짜일까? 잘 봐!", 1500);
+      setTimeout(() => {
+        doors[winnerIdx].classList.add("flash");
+        setTimeout(() => doors[winnerIdx].classList.remove("flash"), 800);
+      }, 1600);
+      let locked = false;
+      doors.forEach((d, i) => {
+        const onTap = () => {
+          if (locked) return;
+          if (i === winnerIdx) {
+            locked = true;
+            d.classList.add("open", "flash");
+            say("정답!", 1000);
+            const dr = d.getBoundingClientRect();
+            const sr = stage.getBoundingClientRect();
+            const xp = ((dr.left + dr.width / 2 - sr.left) / sr.width) * 100;
+            moveEggTo(xp);
+            setTimeout(() => {
+              egg.style.opacity = "0";
+              setTimeout(() => {
+                egg.style.opacity = "1";
+                nextLevel();
+              }, 400);
+            }, 800);
+          } else {
+            d.classList.add("locked");
+            say("어이쿠, 다시!");
+            // briefly re-flash the winner
+            setTimeout(() => {
+              doors[winnerIdx].classList.add("flash");
+              setTimeout(() => doors[winnerIdx].classList.remove("flash"), 600);
+            }, 600);
+            setTimeout(() => d.classList.remove("locked"), 1000);
+          }
+        };
+        d.addEventListener("click", onTap);
+        onCleanup(() => d.removeEventListener("click", onTap));
+      });
+    },
+    hint: "처음에 노란 빛이 깜빡인 문을 누르면 돼.",
+  };
+
+  const LEVELS = [level1, level2];
+
+  // ===== Boot =====
+  $("startBtn").addEventListener("click", () => {
+    $("titleScreen").classList.add("hide");
+    hud.hidden = false;
+    room.hidden = false;
+    currentLevel = 0;
+    loadLevel(0);
+  });
+
+  $("hintBtn").addEventListener("click", () => {
+    const lv = LEVELS[currentLevel];
+    if (lv && lv.hint) say(lv.hint, 2500);
+  });
+
+  // Prevent iOS double-tap zoom
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+})();
+</script>
 </body>
 </html>
