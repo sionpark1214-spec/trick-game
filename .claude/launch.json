@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "trick-game",
+      "runtimeExecutable": "ruby",
+      "runtimeArgs": ["-run", "-e", "httpd", "/tmp/trick-preview", "-p", "5173"],
+      "port": 5173
+    }
+  ]
+}
