@@ -3,22 +3,23 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#1a1530" />
+<meta name="theme-color" content="#ffffff" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <title>미스터 에그 - 속임수 게임</title>
 <style>
   :root {
-    --bg-1: #1a1530;
-    --bg-2: #2b1f4a;
-    --floor: #3a2956;
-    --wall: #4a3370;
-    --fg: #f5f0ff;
-    --accent: #ffd34d;
+    --bg-1: #ffffff;
+    --bg-2: #f5f3fb;
+    --floor: #e6e1f0;
+    --wall: #d6cee6;
+    --fg: #1a1530;
+    --fg-muted: #5e5878;
+    --accent: #ffb84d;
     --accent2: #ff6b9d;
-    --door: #6b3f1d;
-    --door-frame: #8a5530;
-    --shadow: rgba(0, 0, 0, 0.35);
+    --door: #8a5530;
+    --door-frame: #6b3f1d;
+    --shadow: rgba(40, 20, 80, 0.12);
 
     /* scale factor — landscape sizes scale with min(viewport) */
     --u: 1vmin;
@@ -88,7 +89,7 @@
   .orient-warn .msg {
     font-size: 18px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--fg);
     margin-bottom: 4px;
   }
   .orient-warn .sub {
@@ -111,7 +112,8 @@
     z-index: 10;
   }
   .hud .level {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(40, 20, 80, 0.08);
+    color: var(--fg);
     padding: calc(var(--u) * 0.8) calc(var(--u) * 2);
     border-radius: 999px;
     backdrop-filter: blur(8px);
@@ -271,8 +273,8 @@
     width: calc(var(--u) * 9);
     height: calc(var(--u) * 9);
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.12);
-    border: 2px solid rgba(255, 255, 255, 0.28);
+    background: rgba(40, 20, 80, 0.08);
+    border: 2px solid rgba(40, 20, 80, 0.18);
     backdrop-filter: blur(6px);
     display: flex;
     align-items: center;
@@ -299,8 +301,8 @@
     left: 50%;
     transform: translateX(-50%);
     bottom: calc(18% + var(--u) * 12);
-    background: rgba(255, 255, 255, 0.95);
-    color: #1a1530;
+    background: #1a1530;
+    color: #ffffff;
     padding: calc(var(--u) * 1.2) calc(var(--u) * 2);
     border-radius: 16px;
     font-size: calc(var(--u) * 2);
@@ -322,7 +324,7 @@
     transform: translateX(-50%) rotate(45deg);
     width: calc(var(--u) * 1.2);
     height: calc(var(--u) * 1.2);
-    background: rgba(255, 255, 255, 0.95);
+    background: #1a1530;
   }
   .speech.show { opacity: 1; }
 
@@ -402,7 +404,7 @@
   .transition .text {
     font-size: calc(var(--u) * 5);
     font-weight: 700;
-    color: var(--accent);
+    color: var(--fg);
   }
 </style>
 </head>
