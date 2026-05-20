@@ -97,10 +97,10 @@
     opacity: 0.7;
     line-height: 1.5;
   }
-  @media (orientation: portrait) {
-    .orient-warn { display: flex; }
-    #app { display: none; }
-  }
+  /* Portrait detection is done in JS by comparing innerWidth vs innerHeight,
+     because some mobile browsers misreport CSS orientation after rotation. */
+  body.is-portrait .orient-warn { display: flex; }
+  body.is-portrait #app { display: none; }
 
   /* HUD */
   .hud {
@@ -745,6 +745,20 @@
   if (screen.orientation && screen.orientation.lock) {
     screen.orientation.lock("landscape").catch(() => {});
   }
+
+  // Detect orientation by viewport size, not CSS media query — more reliable
+  // across mobile browsers (esp. iOS Safari with address-bar reflow).
+  const checkOrientation = () => {
+    const isPortrait = window.innerWidth < window.innerHeight;
+    document.body.classList.toggle("is-portrait", isPortrait);
+  };
+  checkOrientation();
+  window.addEventListener("resize", checkOrientation);
+  window.addEventListener("orientationchange", () => {
+    // give the browser a beat to settle viewport dimensions
+    setTimeout(checkOrientation, 100);
+    setTimeout(checkOrientation, 400);
+  });
 })();
 </script>
 </body>
