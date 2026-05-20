@@ -265,6 +265,24 @@
     background: #0a0512;
     border-color: var(--door-frame);
   }
+  .door.small {
+    --door-w: calc(var(--u) * 7);
+    --door-h: calc(var(--u) * 12);
+  }
+  .door .label {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--u) * -3.5);
+    transform: translateX(-50%);
+    font-size: calc(var(--u) * 2);
+    font-weight: 700;
+    color: var(--fg);
+    white-space: nowrap;
+    background: #fff;
+    padding: calc(var(--u) * 0.3) calc(var(--u) * 1.2);
+    border-radius: 999px;
+    border: 1.5px solid var(--fg);
+  }
 
   /* Key */
   .key {
@@ -497,6 +515,7 @@
   let levelEls = [];
   let cleanupFns = [];
   let eggX = 50; // egg horizontal position in %
+  let invertControls = false; // level 4 trick
 
   const say = (text, ms = 1800) => {
     speech.textContent = text;
@@ -528,7 +547,7 @@
     eggX = Math.max(4, Math.min(96, xPercent));
     egg.style.left = eggX + "%";
   };
-  const nudgeEgg = (delta) => moveEggTo(eggX + delta);
+  const nudgeEgg = (delta) => moveEggTo(eggX + (invertControls ? -delta : delta));
 
   const nextLevel = () => {
     currentLevel++;
@@ -708,7 +727,210 @@
     hint: "처음에 노란 빛이 깜빡인 문을 누르면 돼.",
   };
 
-  const LEVELS = [level1, level2];
+  // ===== Level 3: 라벨이 거짓말하는 두 개의 문 =====
+  const level3 = {
+    init() {
+      // The labels lie: "정답" is fake, "함정" is the real one.
+      const winnerSide = Math.random() < 0.5 ? "L" : "R";
+      const mkDoor = (xp, side) => addEl(`
+        <div class="door" style="left:${xp}%;transform:translateX(-50%);bottom:calc(18% + var(--u) * 1);position:absolute;">
+          <div class="knob"></div>
+          <div class="label">${side === winnerSide ? "함정" : "정답"}</div>
+        </div>
+      `);
+      const dL = mkDoor(28, "L");
+      const dR = mkDoor(72, "R");
+      say("어느 쪽이 진짜일까?", 2000);
+      const onTap = (d, side) => () => {
+        if (side === winnerSide) {
+          d.classList.add("open", "flash");
+          say("의심한 게 정답!", 1000);
+          setTimeout(() => eggEntersDoor(d, nextLevel), 700);
+        } else {
+          d.classList.add("locked");
+          const lock = document.createElement("div");
+          lock.className = "lock";
+          lock.textContent = "🔒";
+          d.appendChild(lock);
+          say("속았지!");
+          setTimeout(() => { d.classList.remove("locked"); lock.remove(); }, 1000);
+        }
+      };
+      const hL = onTap(dL, "L"), hR = onTap(dR, "R");
+      dL.addEventListener("click", hL);
+      dR.addEventListener("click", hR);
+      onCleanup(() => { dL.removeEventListener("click", hL); dR.removeEventListener("click", hR); });
+    },
+    hint: "글자를 그대로 믿지 마.",
+  };
+
+  // ===== Level 4: 컨트롤이 거꾸로 =====
+  const level4 = {
+    init() {
+      invertControls = true;
+      const door = addEl(`
+        <div class="door" style="left:88%;transform:translateX(-50%);bottom:calc(18% + var(--u) * 1);position:absolute;">
+          <div class="knob"></div>
+        </div>
+      `);
+      say("문 앞으로 가봐!", 1800);
+      let cleared = false;
+      const tick = setInterval(() => {
+        if (cleared) return;
+        if (Math.abs(eggX - 88) < 5) {
+          cleared = true;
+          clearInterval(tick);
+          door.classList.add("open", "flash");
+          say("어떻게 알았어!", 1000);
+          setTimeout(() => eggEntersDoor(door, nextLevel), 700);
+        }
+      }, 80);
+      onCleanup(() => {
+        clearInterval(tick);
+        invertControls = false;
+      });
+    },
+    hint: "버튼이 거꾸로 작동해.",
+  };
+
+  // ===== Level 5: 다가가면 도망가는 문 (가만히 있어야 옴) =====
+  const level5 = {
+    init() {
+      let doorX = 80;
+      const door = addEl(`
+        <div class="door" style="left:${doorX}%;transform:translateX(-50%);bottom:calc(18% + var(--u) * 1);position:absolute;transition:left 0.2s ease-out;">
+          <div class="knob"></div>
+        </div>
+      `);
+      say("쉿... 가만히");
+      let lastEggX = eggX;
+      let stillFrames = 0;
+      let cleared = false;
+      const tick = setInterval(() => {
+        if (cleared) return;
+        const moved = Math.abs(eggX - lastEggX) > 0.4;
+        lastEggX = eggX;
+        if (moved) {
+          // run away from the egg
+          const dir = eggX < doorX ? 1 : -1;
+          doorX = Math.max(8, Math.min(92, doorX + dir * 4));
+          door.style.left = doorX + "%";
+          stillFrames = 0;
+        } else {
+          stillFrames++;
+          if (stillFrames > 8) {
+            // approach the still egg
+            const dir = doorX > eggX ? -1 : 1;
+            doorX += dir * 1.5;
+            door.style.left = doorX + "%";
+            if (Math.abs(doorX - eggX) < 4) {
+              cleared = true;
+              clearInterval(tick);
+              door.classList.add("open", "flash");
+              say("찾았다!", 1000);
+              setTimeout(() => eggEntersDoor(door, nextLevel), 700);
+            }
+          }
+        }
+      }, 100);
+      onCleanup(() => clearInterval(tick));
+    },
+    hint: "쫓아가지 말고 가만히 있어봐.",
+  };
+
+  // ===== Level 6: 똑같은 문 일곱 개, 하나만 손잡이 색이 다름 =====
+  const level6 = {
+    init() {
+      const N = 7;
+      const winnerIdx = Math.floor(Math.random() * N);
+      say("뭔가 다른 게 있어", 2000);
+      const doors = [];
+      for (let i = 0; i < N; i++) {
+        const x = 9 + i * 12.5;
+        const d = addEl(`
+          <div class="door small" style="left:${x}%;transform:translateX(-50%);bottom:calc(18% + var(--u) * 1);position:absolute;">
+            <div class="knob"></div>
+          </div>
+        `);
+        if (i === winnerIdx) {
+          d.querySelector(".knob").style.background = "#ff6b9d";
+          d.querySelector(".knob").style.boxShadow = "0 0 6px #ff6b9d";
+        }
+        doors.push(d);
+      }
+      let cleared = false;
+      doors.forEach((d, i) => {
+        const onTap = () => {
+          if (cleared) return;
+          if (i === winnerIdx) {
+            cleared = true;
+            d.classList.add("open", "flash");
+            say("잘 봤어!", 1000);
+            setTimeout(() => eggEntersDoor(d, nextLevel), 700);
+          } else {
+            d.classList.add("locked");
+            const lock = document.createElement("div");
+            lock.className = "lock";
+            lock.textContent = "🔒";
+            d.appendChild(lock);
+            say("다시 봐.");
+            setTimeout(() => { d.classList.remove("locked"); lock.remove(); }, 700);
+          }
+        };
+        d.addEventListener("click", onTap);
+        onCleanup(() => d.removeEventListener("click", onTap));
+      });
+    },
+    hint: "손잡이 색깔이 다른 문을 찾아.",
+  };
+
+  // ===== Level 7: 카운트다운 문 — 잠금 풀린 순간을 노려 =====
+  const level7 = {
+    init() {
+      const door = addEl(`
+        <div class="door locked" style="left:50%;transform:translateX(-50%);bottom:calc(18% + var(--u) * 1);position:absolute;">
+          <div class="knob"></div>
+          <div class="lock">🔒</div>
+        </div>
+      `);
+      say("때를 노려!", 1500);
+      let unlocked = false;
+      let cleared = false;
+      const cycle = setInterval(() => {
+        if (cleared) return;
+        unlocked = !unlocked;
+        if (unlocked) {
+          door.classList.remove("locked");
+          door.classList.add("flash");
+          const lockIcon = door.querySelector(".lock");
+          if (lockIcon) lockIcon.style.opacity = "0";
+        } else {
+          door.classList.add("locked");
+          door.classList.remove("flash");
+          const lockIcon = door.querySelector(".lock");
+          if (lockIcon) lockIcon.style.opacity = "1";
+        }
+      }, 700);
+      const onTap = () => {
+        if (cleared) return;
+        if (unlocked) {
+          cleared = true;
+          clearInterval(cycle);
+          door.classList.remove("locked");
+          door.classList.add("open", "flash");
+          say("나이스!", 1000);
+          setTimeout(() => eggEntersDoor(door, nextLevel), 700);
+        } else {
+          say("잠겨 있어!");
+        }
+      };
+      door.addEventListener("click", onTap);
+      onCleanup(() => { clearInterval(cycle); door.removeEventListener("click", onTap); });
+    },
+    hint: "자물쇠가 사라진 타이밍에 눌러.",
+  };
+
+  const LEVELS = [level1, level2, level3, level4, level5, level6, level7];
 
   $("startBtn").addEventListener("click", () => {
     $("titleScreen").classList.add("hide");
