@@ -517,12 +517,7 @@
   let eggX = 50; // egg horizontal position in %
   let invertControls = false; // level 4 trick
 
-  const say = (text, ms = 1800) => {
-    speech.textContent = text;
-    speech.classList.add("show");
-    clearTimeout(say._t);
-    if (ms) say._t = setTimeout(() => speech.classList.remove("show"), ms);
-  };
+  const say = () => {}; // 말풍선 비활성화
 
   const addEl = (html) => {
     const tpl = document.createElement("template");
